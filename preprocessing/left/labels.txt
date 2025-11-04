@@ -1,0 +1,5 @@
+distoangular
+horizontal
+mesioangular
+transverse
+vertical
