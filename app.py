@@ -12,10 +12,31 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# updated path for .keras
+print("Checking models...")
+
+import gdown
+os.makedirs("models", exist_ok=True)
+
+model_right_path = "models/vgg16_fine_tuned_right.keras"
+model_left_path = "models/vgg16_fine_tuned_left.keras"
+
+right_url = "https://drive.google.com/uc?id=17AmUDIx_VctABo9WutOphRHkSNGw3Dxr"
+left_url = "https://drive.google.com/uc?id=1jxChWv1tRdecaPLCx45mO0BxbIOyOkft"
+
+if not os.path.exists(model_right_path):
+    print("Downloading RIGHT model from Google Drive...")
+    gdown.download(right_url, model_right_path, quiet=False)
+
+if not os.path.exists(model_left_path):
+    print("Downloading LEFT model from Google Drive...")
+    gdown.download(left_url, model_left_path, quiet=False)
+
 print("Loading models...")
-model_right = tf.keras.models.load_model('models/vgg16_fine_tuned_right.keras')
-model_left = tf.keras.models.load_model('models/vgg16_fine_tuned_left.keras')
+model_right = tf.keras.models.load_model(model_right_path)
+model_left = tf.keras.models.load_model(model_left_path)
 print("Models loaded successfully!")
+# update end for .keras
 
 with open('preprocessing/right/class_indices.json', 'r') as f:
     class_indices_right = json.load(f)
