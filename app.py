@@ -34,11 +34,14 @@ idx_to_class_left = {v: k for k, v in class_indices_left.items()}
 
 def preprocess_image(image_path, preprocessing_info):
     img = Image.open(image_path).convert('RGB')
-    img_size = preprocessing_info.get('img_size', [224, 224])
-    img = img.resize((img_size[0], img_size[1]))
-    img_array = np.array(img)
+    target_size = tuple(preprocessing_info.get('target_size', [224, 224]))
+    rescale = preprocessing_info.get('rescale', 1.0)
+
+    img = img.resize(target_size)
+    img_array = np.array(img, dtype=np.float32)
     img_array = np.expand_dims(img_array, axis=0)
-    img_array = img_array / 255.0
+    img_array *= rescale
+
     return img_array
 
 @app.route('/')
