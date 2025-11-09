@@ -1,12 +1,15 @@
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 import tensorflow as tf
 import numpy as np
 from PIL import Image
 import json
 import os
 from werkzeug.utils import secure_filename
+from pyngrok import ngrok
 
 app = Flask(__name__)
+CORS(app)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -113,7 +116,10 @@ def predict():
                     'confidence': float(predictions[0][idx] * 100)
                 })
             
-            os.remove(filepath)
+            try:
+                os.remove(filepath)
+            except:
+                pass
             
             return jsonify({
                 'success': True,
@@ -125,4 +131,41 @@ def predict():
             return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Get your free token from: https://dashboard.ngrok.com/get-started/your-authtoken
+    NGROK_TOKEN = "YOUR_NGROK_TOKEN_HERE"  # ← PASTE YOUR TOKEN HERE
+    
+    if NGROK_TOKEN != "YOUR_NGROK_TOKEN_HERE":
+        try:
+            ngrok.set_auth_token(NGROK_TOKEN)
+            
+            # Start ngrok tunnel
+            public_url = ngrok.connect(5000)
+            
+            print("\n" + "="*70)
+            print("✅ VGG16 CLASSIFIER IS LIVE!")
+            print("="*70)
+            print(f"\n🌐 PUBLIC URL (Share this link):")
+            print(f"   {public_url}\n")
+            print("="*70)
+            print("\n⚠️  IMPORTANT:")
+            print("   - Keep this terminal window open")
+            print("   - When you close it, the link stops working")
+            print("   - Your computer must stay connected to internet\n")
+            print("="*70 + "\n")
+            
+        except Exception as e:
+            print(f"\n❌ ngrok error: {e}")
+            print("Running without ngrok (local only)\n")
+    else:
+        print("\n" + "="*70)
+        print("⚠️  WARNING: ngrok token not set!")
+        print("="*70)
+        print("\nTo get public URL:")
+        print("1. Go to: https://dashboard.ngrok.com/signup")
+        print("2. Copy your token")
+        print("3. Replace 'YOUR_NGROK_TOKEN_HERE' in app.py")
+        print("\nFor now, running locally at: http://127.0.0.1:5000")
+        print("="*70 + "\n")
+    
+    # Start Flask app
+    app.run(port=5000, debug=False)  # debug=False for stability with ngrok
