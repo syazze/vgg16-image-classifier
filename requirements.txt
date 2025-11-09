@@ -5,3 +5,5 @@ Pillow
 gunicorn
 Werkzeug
 gdown
+pyngrok
+flask-cors
