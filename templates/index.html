@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VGG16 Left/Right Classifier</title>
+    <title>Mandibular Third Molar Classifier</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -54,6 +54,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white; padding: 15px 40px; border: none; border-radius: 10px;
             font-size: 1.1em; cursor: pointer; width: 100%; transition: transform 0.2s; font-weight: 600;
+            margin-bottom: 10px;
         }
         .btn:hover:not(:disabled) { transform: translateY(-2px); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -72,6 +73,11 @@
             display: flex; justify-content: space-between; align-items: center;
         }
         .result-item:last-child { margin-bottom: 0; }
+        .result-item.top-prediction {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border: 2px solid #667eea;
+            font-size: 1.05em;
+        }
         .result-class { font-weight: 600; color: #333; text-transform: capitalize; }
         .result-confidence { font-weight: 700; color: #667eea; }
         .loading { text-align: center; padding: 20px; display: none; }
@@ -85,37 +91,139 @@
             background: #fee; border: 2px solid #fcc; color: #c33;
             padding: 15px; border-radius: 10px; margin-top: 15px; display: none;
         }
+        
+        /* Validation Section Styles */
+        .validation-section {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f0f7ff;
+            border-radius: 15px;
+            border: 2px solid #667eea;
+            display: none;
+        }
+        .validation-header {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .validation-question {
+            text-align: center;
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 1em;
+        }
+        .validation-question strong {
+            color: #667eea;
+            font-size: 1.1em;
+        }
+        .validation-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .btn-correct {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            flex: 1;
+        }
+        .btn-correct:hover:not(:disabled) {
+            background: linear-gradient(135deg, #218838 0%, #1aa179 100%);
+        }
+        .btn-wrong {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            flex: 1;
+        }
+        .btn-wrong:hover:not(:disabled) {
+            background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+        }
+        .validation-success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+            text-align: center;
+            font-weight: 600;
+            border: 2px solid #28a745;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🖼️ VGG16 Classifier</h1>
-        <p class="subtitle">Upload an image and select Left or Right side</p>
+        <h1>Mandibular Third Molar Classifier</h1>
+        <p class="subtitle">Upload a dental X-ray and select Left or Right side</p>
+        
         <div class="side-selector">
             <div class="side-option">
                 <input type="radio" id="leftSide" name="side" value="left">
-                <label for="leftSide">⬅️ Left Side</label>
+                <label for="leftSide">Left Side</label>
             </div>
             <div class="side-option">
                 <input type="radio" id="rightSide" name="side" value="right" checked>
-                <label for="rightSide">Right Side ➡️</label>
+                <label for="rightSide">Right Side</label>
             </div>
         </div>
+        
         <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">📤</div>
             <p><strong>Click to upload</strong> or drag and drop</p>
             <p style="color: #999; font-size: 0.9em; margin-top: 10px;">PNG, JPG up to 16MB</p>
         </div>
+        
         <input type="file" id="fileInput" accept="image/*">
         <img id="preview" alt="Preview">
-        <button class="btn" id="predictBtn" disabled>Predict</button>
+        
+        <button class="btn" id="predictBtn" disabled>Analyze X-Ray</button>
+        
         <div class="error-message" id="errorMessage"></div>
+        
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p style="margin-top: 15px; color: #666;">Analyzing image...</p>
+            <p style="margin-top: 15px; color: #666;">Analyzing X-ray...</p>
         </div>
+        
         <div id="results"></div>
+
+        <!-- Dentist Validation Section -->
+        <div class="validation-section" id="validationSection">
+            <div class="validation-header">
+                Dentist Verification
+            </div>
+            <p class="validation-question">
+                Is the predicted diagnosis of <strong id="topPrediction"></strong> correct?
+            </p>
+            <div class="validation-buttons">
+                <button class="btn btn-correct" id="btnCorrect">
+                    Correct
+                </button>
+                <button class="btn btn-wrong" id="btnWrong">
+                    Wrong
+                </button>
+            </div>
+            
+            <!-- Correction Input Section -->
+            <div id="correctionSection" style="display: none; margin-top: 15px;">
+                <label for="correctClass" style="display: block; margin-bottom: 8px; color: #333; font-weight: 600;">
+                    Enter the correct diagnosis:
+                </label>
+                <input 
+                    type="text" 
+                    id="correctClass" 
+                    placeholder="Type the correct classification..."
+                    style="width: 100%; padding: 12px; border: 2px solid #667eea; border-radius: 8px; font-size: 1em; margin-bottom: 10px;"
+                />
+                <button class="btn" id="btnSubmitCorrection" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    Submit Correction
+                </button>
+            </div>
+            
+            <div class="validation-success" id="validationSuccess">
+                Thank you! Your validation has been recorded.
+            </div>
+        </div>
     </div>
+
     <script>
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
@@ -124,18 +232,37 @@
         const loading = document.getElementById('loading');
         const results = document.getElementById('results');
         const errorMessage = document.getElementById('errorMessage');
+        const validationSection = document.getElementById('validationSection');
+        const validationSuccess = document.getElementById('validationSuccess');
+        const topPrediction = document.getElementById('topPrediction');
+        const btnCorrect = document.getElementById('btnCorrect');
+        const btnWrong = document.getElementById('btnWrong');
+        const correctionSection = document.getElementById('correctionSection');
+        const correctClassInput = document.getElementById('correctClass');
+        const btnSubmitCorrection = document.getElementById('btnSubmitCorrection');
+
         let selectedFile = null;
+        let currentImageId = null;
+        let currentTopPrediction = null;
 
         uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('dragover', (e) => { 
+            e.preventDefault(); 
+            uploadArea.classList.add('dragover'); 
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
             if (file && file.type.startsWith('image/')) handleFile(file);
         });
-        fileInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (file) handleFile(file); });
+        fileInput.addEventListener('change', (e) => { 
+            const file = e.target.files[0]; 
+            if (file) handleFile(file); 
+        });
 
         function handleFile(file) {
             selectedFile = file;
@@ -146,26 +273,41 @@
                 predictBtn.disabled = false;
                 results.style.display = 'none';
                 errorMessage.style.display = 'none';
+                validationSection.style.display = 'none';
+                validationSuccess.style.display = 'none';
+                correctionSection.style.display = 'none';
+                correctClassInput.value = '';
             };
             reader.readAsDataURL(file);
         }
 
         predictBtn.addEventListener('click', async () => {
             if (!selectedFile) return;
+            
             const selectedSide = document.querySelector('input[name="side"]:checked').value;
             const formData = new FormData();
             formData.append('file', selectedFile);
             formData.append('side', selectedSide);
+            
             predictBtn.disabled = true;
             loading.style.display = 'block';
             results.style.display = 'none';
             errorMessage.style.display = 'none';
+            validationSection.style.display = 'none';
+            validationSuccess.style.display = 'none';
 
             try {
-                const response = await fetch('/predict', { method: 'POST', body: formData });
+                const response = await fetch('/predict', { 
+                    method: 'POST', 
+                    body: formData 
+                });
                 const data = await response.json();
+                
                 if (data.success) {
+                    currentImageId = data.image_id;
+                    currentTopPrediction = data.predictions[0].class;
                     displayResults(data.predictions, data.side);
+                    showValidation(data.predictions[0].class);
                 } else {
                     showError(data.error || 'Unknown error occurred');
                 }
@@ -178,14 +320,20 @@
         });
 
         function displayResults(predictions, side) {
-            const sideEmoji = side === 'left' ? '⬅️' : '➡️';
             const sideText = side.charAt(0).toUpperCase() + side.slice(1);
-            results.innerHTML = `<div class="results-header">${sideEmoji} ${sideText} Side - Top Predictions</div>`;
+            
+            results.innerHTML = `<div class="results-header">${sideText} Side - Top Predictions</div>`;
+            
             predictions.forEach((pred, index) => {
                 const resultItem = document.createElement('div');
                 resultItem.className = 'result-item';
+                if (index === 0) {
+                    resultItem.classList.add('top-prediction');
+                }
                 resultItem.innerHTML = `
-                    <span class="result-class">${index + 1}. ${pred.class}</span>
+                    <span class="result-class">
+                        ${index + 1}. ${pred.class}
+                    </span>
                     <span class="result-confidence">${pred.confidence.toFixed(2)}%</span>
                 `;
                 results.appendChild(resultItem);
@@ -193,9 +341,84 @@
             results.style.display = 'block';
         }
 
+        function showValidation(prediction) {
+            topPrediction.textContent = prediction;
+            validationSection.style.display = 'block';
+            validationSuccess.style.display = 'none';
+            correctionSection.style.display = 'none';
+            btnCorrect.disabled = false;
+            btnWrong.disabled = false;
+        }
+
         function showError(message) {
             errorMessage.textContent = message;
             errorMessage.style.display = 'block';
+        }
+
+        btnCorrect.addEventListener('click', () => submitValidation('correct'));
+        btnWrong.addEventListener('click', () => {
+            // Show correction input when "Wrong" is clicked
+            correctionSection.style.display = 'block';
+            btnCorrect.disabled = true;
+            btnWrong.disabled = true;
+        });
+
+        btnSubmitCorrection.addEventListener('click', () => {
+            const correctClass = correctClassInput.value.trim();
+            if (!correctClass) {
+                alert('Please enter the correct diagnosis');
+                return;
+            }
+            submitValidation('wrong', correctClass);
+        });
+
+        async function submitValidation(feedback, correctClass = null) {
+            btnCorrect.disabled = true;
+            btnWrong.disabled = true;
+            btnSubmitCorrection.disabled = true;
+
+            try {
+                const payload = {
+                    image_id: currentImageId,
+                    prediction: currentTopPrediction,
+                    feedback: feedback
+                };
+                
+                // Add correct class if wrong
+                if (feedback === 'wrong' && correctClass) {
+                    payload.correct_class = correctClass;
+                }
+
+                const response = await fetch('/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    correctionSection.style.display = 'none';
+                    validationSuccess.style.display = 'block';
+                    if (feedback === 'correct') {
+                        validationSuccess.innerHTML = 'Thank you! The diagnosis has been confirmed as correct.';
+                    } else {
+                        validationSuccess.innerHTML = `Thank you! Your correction to "${correctClass}" has been recorded for model improvement.`;
+                    }
+                } else {
+                    showError('Validation failed: ' + (data.error || 'Unknown error'));
+                    btnCorrect.disabled = false;
+                    btnWrong.disabled = false;
+                    btnSubmitCorrection.disabled = false;
+                }
+            } catch (error) {
+                showError('Error submitting validation: ' + error.message);
+                btnCorrect.disabled = false;
+                btnWrong.disabled = false;
+                btnSubmitCorrection.disabled = false;
+            }
         }
     </script>
 </body>
