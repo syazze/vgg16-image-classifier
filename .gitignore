@@ -8,9 +8,15 @@ env/
 venv/
 ENV/
 
-# Model files (too large for GitHub)
-models/*.keras
-models/*.h5
+# Model files (Ignore ALL .keras files anywhere)
+*.keras
+*.h5
+models/
+model/
+
+# Collected Data & Logs (IMPORTANT: Don't push this!)
+collected_data/
+validation_log.json
 
 # Uploads
 static/uploads/*

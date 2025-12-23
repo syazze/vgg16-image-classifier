@@ -484,9 +484,13 @@
             btnWrong.disabled = true;
             btnSubmitValidation.disabled = true;
 
+            // --- NEW: Get the selected side (Left or Right) ---
+            const currentSide = document.querySelector('input[name="side"]:checked').value;
+
             try {
                 const payload = {
                     image_id: currentImageId,
+                    side: currentSide,  // <--- This is the key fix!
                     prediction: currentTopPrediction,
                     feedback: feedback
                 };

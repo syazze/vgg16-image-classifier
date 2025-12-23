@@ -8,6 +8,17 @@ import os
 from werkzeug.utils import secure_filename
 import uuid
 
+VALIDATION_LOG = "validation_log.json"
+COLLECTED_DATA_DIR = "collected_data"  # <--- NEW
+os.makedirs(COLLECTED_DATA_DIR, exist_ok=True) # <--- NEW
+
+# Load existing validation log if exists
+if os.path.exists(VALIDATION_LOG):
+    with open(VALIDATION_LOG, "r") as f:
+        validated_results = json.load(f)
+else:
+    validated_results = []
+
 app = Flask(__name__)
 CORS(app)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
@@ -26,8 +37,8 @@ try:
     model_left_path = "models/vgg16_left_earlystop_20251217_020312.keras"
 
     # Replace these with your actual Google Drive file IDs
-    right_url = "https://drive.google.com/drive/folders/1hGTg_s_VgDd05IGAV7H8shX5H0FeDZEx"
-    left_url = "https://drive.google.com/drive/folders/13Mow7hEeUcxlCC9aYgEHO2t4qHdipC2S"
+    right_url = "https://drive.google.com/uc?id=1IUJ9tV25kJAuGvZjpIIg3YC_txlXk2P4"
+    left_url = "https://drive.google.com/uc?id=1vcT5iepvkpOHLVcTosX5I0EILRT0CnJO"
 
     if not os.path.exists(model_right_path):
         print("Downloading RIGHT model from Google Drive...")
@@ -46,8 +57,23 @@ except ImportError:
     model_left_path = "models/vgg16_left_earlystop_20251217_020312.keras"
 
 print("Loading models...")
+
+# Safety check: ensure models exist
+if not os.path.exists(model_right_path):
+    raise FileNotFoundError(
+        f"RIGHT model not found at {model_right_path}. "
+        "Please download it from Google Drive and place it in the models/ folder."
+    )
+
+if not os.path.exists(model_left_path):
+    raise FileNotFoundError(
+        f"LEFT model not found at {model_left_path}. "
+        "Please download it from Google Drive and place it in the models/ folder."
+    )
+
 model_right = tf.keras.models.load_model(model_right_path)
 model_left = tf.keras.models.load_model(model_left_path)
+
 print("Models loaded successfully!")
 
 # Load preprocessing info
@@ -113,6 +139,9 @@ def predict():
         return jsonify({'error': 'Side must be "left" or "right"'}), 400
     
     try:
+        # Generate unique ID for this prediction FIRST
+        image_id = str(uuid.uuid4())
+        
         # Save uploaded file
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -147,14 +176,23 @@ def predict():
                 'confidence': float(predictions[0][idx] * 100)
             })
         
-        # Clean up uploaded file
+        # --- FIXED BLOCK START ---
+        # Instead of deleting, move file to collected_data for future training
+        import shutil
+        
+        # Create a unique filename to avoid overwrites
+        save_filename = f"{image_id}_{filename}"
+        save_path = os.path.join(COLLECTED_DATA_DIR, save_filename)
+        
+        # Copy the file there
+        shutil.copy2(filepath, save_path)
+        
+        # Now we can remove the temp file from uploads
         try:
             os.remove(filepath)
         except:
             pass
-        
-        # Generate unique ID for this prediction
-        image_id = str(uuid.uuid4())
+        # --- FIXED BLOCK END ---
         
         print(f"Prediction complete! Top result: {results[0]['class']} ({results[0]['confidence']:.2f}%)")
         
@@ -177,6 +215,7 @@ def validate_prediction():
     try:
         data = request.json
         image_id = data.get("image_id")
+        side = data.get("side") # <--- NEW: We need to know if it was Left or Right model
         prediction = data.get("prediction")
         feedback = data.get("feedback")  # "correct" or "wrong"
         correct_class = data.get("correct_class")  # Only present if wrong
@@ -187,6 +226,8 @@ def validate_prediction():
         # Store validation
         validation_entry = {
             "image_id": image_id,
+            "side": side,            # <--- ADD THIS
+            "filename": f"{image_id}_*", # Pattern to find the file later
             "prediction": prediction,
             "feedback": feedback,
             "timestamp": str(np.datetime64('now'))
@@ -197,6 +238,9 @@ def validate_prediction():
             validation_entry["correct_class"] = correct_class
 
         validated_results.append(validation_entry)
+
+        with open(VALIDATION_LOG, "w") as f:
+            json.dump(validated_results, f, indent=2)
 
         log_message = f"Validation received: {prediction} - {feedback}"
         if correct_class:
@@ -238,32 +282,32 @@ if __name__ == '__main__':
                 ngrok.set_auth_token(NGROK_TOKEN)
                 public_url = ngrok.connect(5000)
                 print("\n" + "="*70)
-                print("✅ VGG16 CLASSIFIER IS LIVE!")
+                print(" VGG16 CLASSIFIER IS LIVE!")
                 print("="*70)
-                print(f"\n🌐 PUBLIC URL (Share this link):")
+                print(f"\n PUBLIC URL (Share this link):")
                 print(f"   {public_url}\n")
                 print("="*70)
-                print("\n⚠️  IMPORTANT:")
+                print("\n IMPORTANT:")
                 print("   - Keep this terminal window open")
                 print("   - When you close it, the link stops working")
                 print("   - Your computer must stay connected to internet\n")
                 print("="*70 + "\n")
             else:
-                print("\n⚠️  To use ngrok, set NGROK_AUTH_TOKEN environment variable")
+                print("\n To use ngrok, set NGROK_AUTH_TOKEN environment variable")
                 print("   or replace 'YOUR_NGROK_TOKEN_HERE' in the code\n")
         except ImportError:
-            print("\n⚠️  pyngrok not installed. Install with: pip install pyngrok")
+            print("\n pyngrok not installed. Install with: pip install pyngrok")
         except Exception as e:
             print(f"\n❌ ngrok error: {e}")
             print("Running without ngrok (local only)\n")
     
     # Standard local server
     print("\n" + "="*70)
-    print("🚀 Starting Flask Server")
+    print("Starting Flask Server")
     print("="*70)
-    print(f"\n📍 Local URL: http://127.0.0.1:5000")
-    print(f"📍 Network URL: http://localhost:5000")
-    print("\n💡 To use ngrok for public access, run:")
+    print(f"\n Local URL: http://127.0.0.1:5000")
+    print(f" Network URL: http://localhost:5000")
+    print("\n To use ngrok for public access, run:")
     print("   python app.py --ngrok")
     print("\n" + "="*70 + "\n")
     
