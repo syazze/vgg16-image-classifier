@@ -148,6 +148,63 @@
             font-weight: 600;
             border: 2px solid #28a745;
         }
+        
+        /* Classification Options Styles */
+        .classification-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .classification-option {
+            position: relative;
+        }
+        .classification-option input[type="radio"] {
+            display: none;
+        }
+        .classification-option label {
+            display: block;
+            padding: 12px 15px;
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            font-size: 0.95em;
+        }
+        .classification-option label:hover {
+            background: #f8f9ff;
+            border-color: #667eea;
+        }
+        .classification-option input[type="radio"]:checked + label {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #764ba2;
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+        }
+        .classification-option.top-prediction label {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+        .classification-option.top-prediction input[type="radio"]:checked + label {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border-color: #28a745;
+        }
+        #correctionSection {
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -195,25 +252,22 @@
             </p>
             <div class="validation-buttons">
                 <button class="btn btn-correct" id="btnCorrect">
-                    Correct
+                    ✓ Correct
                 </button>
                 <button class="btn btn-wrong" id="btnWrong">
-                    Wrong
+                    ✗ Wrong
                 </button>
             </div>
             
-            <!-- Correction Input Section -->
-            <div id="correctionSection" style="display: none; margin-top: 15px;">
-                <label for="correctClass" style="display: block; margin-bottom: 8px; color: #333; font-weight: 600;">
-                    Enter the correct diagnosis:
-                </label>
-                <input 
-                    type="text" 
-                    id="correctClass" 
-                    placeholder="Type the correct classification..."
-                    style="width: 100%; padding: 12px; border: 2px solid #667eea; border-radius: 8px; font-size: 1em; margin-bottom: 10px;"
-                />
-                <button class="btn" id="btnSubmitCorrection" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <!-- Classification Selection (shown when Wrong is clicked) -->
+            <div id="correctionSection" style="display: none; margin-top: 20px;">
+                <p style="text-align: center; color: #333; margin-bottom: 15px; font-weight: 600;">
+                    Please select the correct classification:
+                </p>
+                <div id="classificationOptions" class="classification-grid">
+                    <!-- Options will be populated dynamically -->
+                </div>
+                <button class="btn" id="btnSubmitValidation" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                     Submit Correction
                 </button>
             </div>
@@ -238,12 +292,22 @@
         const btnCorrect = document.getElementById('btnCorrect');
         const btnWrong = document.getElementById('btnWrong');
         const correctionSection = document.getElementById('correctionSection');
-        const correctClassInput = document.getElementById('correctClass');
-        const btnSubmitCorrection = document.getElementById('btnSubmitCorrection');
+        const classificationOptions = document.getElementById('classificationOptions');
+        const btnSubmitValidation = document.getElementById('btnSubmitValidation');
 
         let selectedFile = null;
         let currentImageId = null;
         let currentTopPrediction = null;
+        let allPredictions = [];
+        
+        // Define all possible classifications
+        const ALL_CLASSIFICATIONS = [
+            'Distoangular',
+            'Horizontal',
+            'Mesioangular',
+            'Transverse',
+            'Vertical'
+        ];
 
         uploadArea.addEventListener('click', () => fileInput.click());
         uploadArea.addEventListener('dragover', (e) => { 
@@ -276,7 +340,10 @@
                 validationSection.style.display = 'none';
                 validationSuccess.style.display = 'none';
                 correctionSection.style.display = 'none';
-                correctClassInput.value = '';
+                classificationOptions.innerHTML = '';
+                btnSubmitValidation.disabled = true;
+                btnCorrect.disabled = false;
+                btnWrong.disabled = false;
             };
             reader.readAsDataURL(file);
         }
@@ -306,8 +373,9 @@
                 if (data.success) {
                     currentImageId = data.image_id;
                     currentTopPrediction = data.predictions[0].class;
+                    allPredictions = data.predictions;
                     displayResults(data.predictions, data.side);
-                    showValidation(data.predictions[0].class);
+                    showValidation(data.predictions);
                 } else {
                     showError(data.error || 'Unknown error occurred');
                 }
@@ -341,13 +409,47 @@
             results.style.display = 'block';
         }
 
-        function showValidation(prediction) {
-            topPrediction.textContent = prediction;
+        function showValidation(predictions) {
+            // Capitalize first letter of the prediction
+            const predictionText = predictions[0].class;
+            const capitalizedPrediction = predictionText.charAt(0).toUpperCase() + predictionText.slice(1);
+            topPrediction.textContent = capitalizedPrediction;
+            
             validationSection.style.display = 'block';
             validationSuccess.style.display = 'none';
             correctionSection.style.display = 'none';
             btnCorrect.disabled = false;
             btnWrong.disabled = false;
+        }
+        
+        function populateClassificationOptions(predictions) {
+            // Use only the predefined classifications to avoid duplicates
+            // Sort them alphabetically for consistent display
+            const allClasses = [...ALL_CLASSIFICATIONS].sort();
+            
+            // Clear previous options
+            classificationOptions.innerHTML = '';
+            
+            // Create radio buttons for each classification
+            allClasses.forEach((className) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'classification-option';
+                
+                const radioId = `class_${className.replace(/\s+/g, '_').toLowerCase()}`;
+                optionDiv.innerHTML = `
+                    <input type="radio" id="${radioId}" name="classification" value="${className}">
+                    <label for="${radioId}">${className}</label>
+                `;
+                classificationOptions.appendChild(optionDiv);
+            });
+            
+            // Enable submit button when a classification is selected
+            const radioButtons = classificationOptions.querySelectorAll('input[type="radio"]');
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    btnSubmitValidation.disabled = false;
+                });
+            });
         }
 
         function showError(message) {
@@ -356,26 +458,31 @@
         }
 
         btnCorrect.addEventListener('click', () => submitValidation('correct'));
+        
         btnWrong.addEventListener('click', () => {
-            // Show correction input when "Wrong" is clicked
+            // Populate and show classification options when "Wrong" is clicked
+            populateClassificationOptions(allPredictions);
             correctionSection.style.display = 'block';
             btnCorrect.disabled = true;
             btnWrong.disabled = true;
         });
 
-        btnSubmitCorrection.addEventListener('click', () => {
-            const correctClass = correctClassInput.value.trim();
-            if (!correctClass) {
-                alert('Please enter the correct diagnosis');
+        btnSubmitValidation.addEventListener('click', async () => {
+            const selectedClassification = document.querySelector('input[name="classification"]:checked');
+            
+            if (!selectedClassification) {
+                alert('Please select a classification');
                 return;
             }
-            submitValidation('wrong', correctClass);
+            
+            const selectedClass = selectedClassification.value;
+            await submitValidation('wrong', selectedClass);
         });
-
+        
         async function submitValidation(feedback, correctClass = null) {
             btnCorrect.disabled = true;
             btnWrong.disabled = true;
-            btnSubmitCorrection.disabled = true;
+            btnSubmitValidation.disabled = true;
 
             try {
                 const payload = {
@@ -402,22 +509,23 @@
                 if (data.success) {
                     correctionSection.style.display = 'none';
                     validationSuccess.style.display = 'block';
+                    
                     if (feedback === 'correct') {
-                        validationSuccess.innerHTML = 'Thank you! The diagnosis has been confirmed as correct.';
+                        validationSuccess.innerHTML = '✓ Thank you! The diagnosis has been confirmed as correct.';
                     } else {
-                        validationSuccess.innerHTML = `Thank you! Your correction to "${correctClass}" has been recorded for model improvement.`;
+                        validationSuccess.innerHTML = `✓ Thank you! Your correction to "${correctClass}" has been recorded for model improvement.`;
                     }
                 } else {
                     showError('Validation failed: ' + (data.error || 'Unknown error'));
                     btnCorrect.disabled = false;
                     btnWrong.disabled = false;
-                    btnSubmitCorrection.disabled = false;
+                    btnSubmitValidation.disabled = false;
                 }
             } catch (error) {
                 showError('Error submitting validation: ' + error.message);
                 btnCorrect.disabled = false;
                 btnWrong.disabled = false;
-                btnSubmitCorrection.disabled = false;
+                btnSubmitValidation.disabled = false;
             }
         }
     </script>

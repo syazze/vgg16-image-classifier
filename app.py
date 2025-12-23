@@ -22,12 +22,12 @@ try:
     import gdown
     os.makedirs("models", exist_ok=True)
 
-    model_right_path = "models/vgg16_fine_tuned_right.keras"
-    model_left_path = "models/vgg16_fine_tuned_left.keras"
+    model_right_path = "models/vgg16_right_earlystop_20251216_163843.keras"
+    model_left_path = "models/vgg16_left_earlystop_20251217_020312.keras"
 
     # Replace these with your actual Google Drive file IDs
-    right_url = "https://drive.google.com/uc?id=17AmUDIx_VctABo9WutOphRHkSNGw3Dxr"
-    left_url = "https://drive.google.com/uc?id=1jxChWv1tRdecaPLCx45mO0BxbIOyOkft"
+    right_url = "https://drive.google.com/drive/folders/1hGTg_s_VgDd05IGAV7H8shX5H0FeDZEx"
+    left_url = "https://drive.google.com/drive/folders/13Mow7hEeUcxlCC9aYgEHO2t4qHdipC2S"
 
     if not os.path.exists(model_right_path):
         print("Downloading RIGHT model from Google Drive...")
@@ -42,8 +42,8 @@ try:
         print("LEFT model already exists locally")
 except ImportError:
     print("gdown not installed, using local models only")
-    model_right_path = "models/vgg16_fine_tuned_right.keras"
-    model_left_path = "models/vgg16_fine_tuned_left.keras"
+    model_right_path = "models/vgg16_right_earlystop_20251216_163843.keras"
+    model_left_path = "models/vgg16_left_earlystop_20251217_020312.keras"
 
 print("Loading models...")
 model_right = tf.keras.models.load_model(model_right_path)
