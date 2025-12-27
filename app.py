@@ -280,7 +280,7 @@ if __name__ == '__main__':
             
             if NGROK_TOKEN != 'YOUR_NGROK_TOKEN_HERE':
                 ngrok.set_auth_token(NGROK_TOKEN)
-                public_url = ngrok.connect(5000)
+                public_url = ngrok.connect(7860)
                 print("\n" + "="*70)
                 print(" VGG16 CLASSIFIER IS LIVE!")
                 print("="*70)
@@ -305,10 +305,8 @@ if __name__ == '__main__':
     print("\n" + "="*70)
     print("Starting Flask Server")
     print("="*70)
-    print(f"\n Local URL: http://127.0.0.1:5000")
-    print(f" Network URL: http://localhost:5000")
-    print("\n To use ngrok for public access, run:")
-    print("   python app.py --ngrok")
+    print(f"\n Local URL: http://127.0.0.1:7860")
+    print(f" Network URL: http://localhost:7860")
     print("\n" + "="*70 + "\n")
     
-   app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=7860, debug=False)
